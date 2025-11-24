@@ -2,7 +2,7 @@
  * @Author: FrankFungcode combeebe@gmail.com
  * @Date: 2025-11-24 23:02:40
  * @LastEditors: FrankFungcode combeebe@gmail.com
- * @LastEditTime: 2025-11-25 01:16:37
+ * @LastEditTime: 2025-11-25 01:23:43
  * @FilePath: \everyday-algorithm\14.1121-leetcode-104.js
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -47,15 +47,16 @@ var maxDepth = function (root) {
   // 初始化队列和深度
   const queue = [root];
   let depth = 0;
+  let front = 0; // 队列头指针，避免使用shift()
 
   // 层序遍历
-  while (queue.length > 0) {
+  while (front < queue.length) {
     // 当前层的节点数量
-    const levelSize = queue.length;
+    const levelSize = queue.length - front;
 
     // 处理当前层的所有节点
     for (let i = 0; i < levelSize; i++) {
-      const node = queue.shift();
+      const node = queue[front++]; // 使用指针代替shift()
 
       // 将下一层的节点加入队列
       if (node.left !== null) {
@@ -76,5 +77,5 @@ var maxDepth = function (root) {
 /**
  * 复杂度分析
 时间复杂度：O(n)，n为节点总数，每个节点访问一次
-空间复杂度：O(w)，w为树的最大宽度（某一层的最大节点数），最坏情况下（完全二叉树最后一层），w ≈ n/2，仍为O(n)
+空间复杂度：O(n)，
  */
