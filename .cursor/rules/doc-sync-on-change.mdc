@@ -1,0 +1,64 @@
+---
+description: 代码或架构变更后，强制对文档体系做精准的同步自检，并显式声明"checked xxx"。
+alwaysApply: true
+---
+
+# 文档同步自检规约
+
+每次完成会引起**对外行为、契约、架构或公共能力**变化的代码改动后，**必须**对照下表逐项自检，并在最终回复中显式输出"checked xxx"清单（即便结论是"无需更新"也要列出已核对的文档）。
+
+> 文档体系总入口：[`AGENTS.md`](mdc:AGENTS.md) → [`docs/AGENTS.md`](mdc:docs/AGENTS.md) / [`_bmad-output/AGENTS.md`](mdc:_bmad-output/AGENTS.md)
+
+## 改动范围 → 必核文档映射
+
+| 改动类型 | 必核文档 | 可能动作 |
+|---------|---------|---------|
+| 新增/修改 Controller、修改 REST API 路径/方法/请求体/响应体 | `docs/modules/{module}/interfaces.md` | 更新 API 表与字段 |
+| 新增/修改对外暴露的 Bean / 工具方法 / Resolver | `docs/modules/{module}/interfaces.md` | 更新"暴露的内部 API"段 |
+| 新增/修改 DTO / VO / Param / Command 字段 | `docs/modules/{module}/interfaces.md` | 更新 DTO 表 |
+| 新增/修改业务流程、状态机、跨服务调用顺序 | `docs/modules/{module}/design.md` | 更新"核心流程"或新增 mermaid |
+| 新增/修改数据模型（实体字段 / 表关联 / 索引语义） | `docs/modules/{module}/design.md` | 更新"数据模型" |
+| 新增/修改业务规则（校验、权限、生命周期） | `docs/modules/{module}/design.md` | 更新"业务规则"段 |
+| 新增/修改新模块 | 触发 [`create-module-context`](mdc:.cursor/rules/create-module-context.mdc) | 复制 `_template/` |
+| 新增/变化全局技术选型、横切关注点（如可观测性、安全、缓存策略） | `docs/decisions/NNNN-*.md`（新增 ADR）+ `docs/decisions/AGENTS.md`（更新索引） | 新增 ADR 文件 |
+| 变更涉及命名风格（VO/DTO/Param/Command/Request/Response 后缀、层间映射策略） | [`docs/decisions/0008-naming-and-mapping.md`](../../docs/decisions/0008-naming-and-mapping.md) | 更新对应章节 |
+| 修改全局架构规则（分层、调用约束、请求生命周期） | `docs/architecture/architecture.md` | 更新对应章节 |
+| 修改技术栈版本 / 引入新核心依赖 | `docs/decisions/0001-tech-stack.md` | 更新版本表 |
+| 新增/删除/重命名 Java 包，或调整包内类组合 | 该包的 `AGENTS.md`（`src/.../{package}/AGENTS.md`） | 同步类清单与依赖 |
+| 修改 BMad 工作流约定 | [`_bmad-output/bmad-guide.md`](mdc:_bmad-output/bmad-guide.md) | 更新对应章节 |
+| 仅 BMad 过程产物（PRD/Story/Sprint）变化 | `_bmad-output/{planning,implementation}-artifacts/{module}/` | 在过程产物自身维护 |
+
+## 自检与汇报格式
+
+完成代码改动后，在响应末尾**必须**输出（示例）：
+
+```
+docs sync check:
+- [updated] docs/modules/timesheet/interfaces.md - 新增 GET /timesheet/{id}/approvals 接口
+- [updated] docs/modules/timesheet/design.md - 调整审批状态机迁移路径
+- [no-change] docs/decisions/ - 无全局决策变化
+- [no-change] src/main/java/shokz/nexa/apps/timesheet/entity/AGENTS.md - 类清单未变
+```
+
+## 不变量约束
+
+修改文档时必须遵守：
+
+- **AGENTS.md 只做索引**：≤ 50 行，不写长内容、不贴代码
+- **父 → 子单向引用**：禁止"兄弟互引"（同级 AGENTS 间不互链，要跳走共同父级）
+- **跨树只引对方根 AGENTS.md**：`docs/` 与 `_bmad-output/` 不深钩
+- **整体是树，无环**
+
+## 边界
+
+- ❌ 不在 `docs/` 写 PRD/Epic/Story/Sprint
+- ❌ 不在 `_bmad-output/` 写架构约定/ADR
+- ❌ 宁愿在文档中标 `TODO`，不要"为了完整凑内容"
+- ❌ 不修改历史过程产物里的路径快照（如 BMad story 文档里的旧路径）
+- ✅ 纯 Bug 修复且**对外契约不变** / 仅格式化或重命名时，可仅核 `AGENTS.md`，其他文档可标记为 `[no-change]`
+
+## 关联规则
+
+- 编码规范与分层约束：[`project.mdc`](mdc:.cursor/rules/project.mdc)
+- 新模块文档骨架：[`create-module-context.mdc`](mdc:.cursor/rules/create-module-context.mdc)
+- BMad 工作流：[`bmad-workflow.mdc`](mdc:.cursor/rules/bmad-workflow.mdc)

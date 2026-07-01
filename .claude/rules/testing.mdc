@@ -1,0 +1,29 @@
+---
+description: 测试运行规范，控制测试输出量以减少上下文污染。当运行测试、验证代码、执行 mvn test 时应用。
+globs:
+alwaysApply: true
+---
+
+# 测试运行规范
+
+## 执行原则
+
+1. **优先单测**：始终优先运行单个测试类而非全量 suite
+   - 正确：`./mvnw test -q -Dtest=RdModifyServiceImplTest`
+   - 避免：`./mvnw test`（除非明确要求全量）
+
+2. **静默模式**：所有测试命令必须加 `-q` flag 减少 Maven 日志噪音
+   - `./mvnw test -q -Dtest=ClassName`
+   - `./mvnw test -q -pl :module-name -Dtest=ClassName`
+
+3. **输出精简**：
+   - 测试全部通过时，只报告：`All N tests passed, BUILD SUCCESS`
+   - 测试失败时，只贴：失败的测试方法名 + 错误消息前 5 行 + assertion 差异
+   - 禁止贴出完整 surefire 报告、Maven 依赖下载日志、通过测试的详情
+
+4. **管道限制**：当确实需要跑全量测试时，使用管道限制输出
+   - `./mvnw test -q 2>&1 | grep -E "(Tests run:|BUILD|FAILURE|ERROR)" | tail -20`
+
+5. **失败后行为**：
+   - 先看 `target/surefire-reports/TEST-*.xml` 中失败测试的具体信息
+   - 不要重复贴出已经在上下文中的相同错误

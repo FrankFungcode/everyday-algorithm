@@ -1,0 +1,58 @@
+---
+description: BMad 工作流总览。提供阶段流程、产物路径、多模块路由、前后端协作规范的精简摘要。完整手册见 _bmad-output/bmad-guide.md。
+alwaysApply: true
+---
+
+# BMad 工作流速览
+
+## 阶段流程
+
+```
+1-分析 → 2-规划[PRD*] → 3-方案[Architecture* → Epics* → Readiness*] → 4-实施[Sprint* → Story* → Dev* → Review]
+（* = 必选）
+```
+
+## 产物路径
+
+- 规划产物：`_bmad-output/planning-artifacts/{module}/`
+- 实施产物：`_bmad-output/implementation-artifacts/{module}/`
+- 测试产物：`_bmad-output/test-artifacts/`
+- 长期知识：`docs/modules/{module}/`
+
+## 多模块路由
+
+已注册模块：`calendar(cal)` · `timesheet(ts)` · `integration(int)` · `biz-config(bc)` · `scheduled-job(sj)`
+
+**路由规则**：用户明确指定 → 路径推断 → 必须询问。未确定模块前禁止在产物根目录写入。
+
+## 前后端统一工作区
+
+两仓（`apps/` + `apps-client/`）同时加入同一 IDE 工作区，agent 可直接读写两侧文件，**无需跨仓拷贝**。
+
+- PRD / Epic / Architecture 在本仓库（`apps/`）产出
+- UX 在 `apps-client/` 产出（需读前端组件代码）
+- 两侧通过相对路径直接引用，UX 先于 Architecture
+
+## 新模块标准流程（纯后端）
+
+```
+[CB] → [CP*] → [CA*] → [CE*] → [IR*] → [SP*] → [CS*] → [DS*] → [CR]
+```
+
+## 全栈功能标准流程
+
+```
+本仓库[CP] PRD → 前端[CU] UX → 本仓库[CA] Architecture → 本仓库[CE] Epic → 本仓库[IR]
+→ 前后端各自 [SP] → [CS] → [DS] → [CR]
+```
+
+## 快捷操作
+
+- 快速修改：`[QQ]` Quick Dev
+- 变更处理：`[CC]` Correct Course
+- 查看进度：`[SS]` Sprint Status / `[BH]` Help
+
+## 完整参考
+
+- [`_bmad-output/bmad-guide.md`](mdc:_bmad-output/bmad-guide.md) — BMad 工作流手册（人与 Agent 共用，含技能清单、路由规则、前后端协作详解）
+- [`AGENTS.md`](mdc:AGENTS.md) — 仓库统一入口（含两棵文档树）

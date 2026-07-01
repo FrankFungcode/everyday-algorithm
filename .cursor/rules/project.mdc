@@ -1,0 +1,299 @@
+---
+alwaysApply: true
+---
+
+# Nexa Integration Service 开发规范
+
+## AI 角色定义
+
+你是一位资深 Java 高级开发工程师，始终遵循 SOLID 原则、DRY 原则、KISS 原则和 YAGNI 原则。你始终遵循 OWASP 安全最佳实践。你总是将任务分解为最小单元，并以逐步方式解决问题。
+
+## 技术栈
+
+- **框架**：Spring Boot 4.0.4 + Maven + Java 25
+- **核心依赖**：Spring Web, Spring Data JPA, Spring Security, Lombok, MySQL, MapStruct
+- **微服务组件**：Nacos（配置/注册中心）, OpenFeign（服务调用）, Micrometer Tracing（链路追踪）
+- **其他**：Redisson（分布式锁/缓存）, Flyway（数据库版本管理）, Hutool（工具类）
+- **JSON（Jackson 3）**：Spring Boot 4 默认使用 Jackson 3（`tools.jackson.*`），业务代码统一使用该包名；注解仍为 `com.fasterxml.jackson.annotation.*`（官方共享设计，Jackson 2/3 通用）；三方库传递的 Jackson 2 允许共存，无需排除
+
+## 架构设计（四层架构）
+
+```
+┌─────────────────────────────────────────────┐
+│              Controller                     │  # REST API接口
+├─────────────────────────────────────────────┤
+│              Application                    │  # 应用编排、事务管理
+├─────────────────────────────────────────────┤
+│              Service                        │  # 业务逻辑、领域服务
+├─────────────────────────────────────────────┤
+│          Integration + Entity               │  # 外部系统适配器、数据实体
+└─────────────────────────────────────────────┘
+```
+
+### 分层职责
+
+| 层级 | 职责 | 命名规范 |
+|-----|------|---------|
+| Controller | 接口定义、参数校验 | `{Xxx}Controller.java` |
+| Scheduler | 定时任务（形如 Controller，发起操作） | `{Xxx}Scheduler.java` |
+| Application | 业务逻辑编排、事务管理、跨 Service 协调。**禁止包含具体业务逻辑** | `{Xxx}Application.java` |
+| Service | 业务操作具体实现、单一职责或可完整复用的业务逻辑 | `{Xxx}Service.java` |
+| Integration | 外部系统调用封装。**禁止包含业务逻辑**，视为对外部资源的管理 | `{System}Client.java` |
+| Entity | 数据实体定义、数据持久化 | `{Xxx}.java` + `{Xxx}Repo.java` |
+
+### 调用规则
+
+1. **事务控制**
+   - `@Transactional` 通常添加在 **Application 层**，负责主事务管理
+   - **Service 层**如需独立事务，使用 `@Transactional(propagation = REQUIRES_NEW)`
+   - 多个连续数据库操作必须使用 `@Transactional` 或 `TransactionTemplate`
+
+2. **依赖调用**
+   - Application 层 → 只能调用 Service 层（禁止直接操作 Integration/Entity）
+   - Service 层 → 可直接操作 Integration 和 Entity 层
+   - Integration/Entity 层 → 禁止向上调用
+
+3. **跨模块调用**
+   - Service 层可被其他模块的 Application 层调用（业务复用）
+   - Controller、Application、Integration、Entity 禁止跨模块调用
+
+## Controller 规范
+
+1. 必须使用 `@RestController` 注解
+2. 必须使用 `@RequestMapping("/xxx")` 指定类级别路由，直接使用模块名开始，避免使用`/api`开头
+3. 使用 RESTful 风格：`@GetMapping`（查询）、`@PostMapping`（创建）、`@PutMapping`（更新）、`@DeleteMapping`（删除）
+4. 路径保持资源导向，如 `/users/{id}`，**避免使用动词**如 `/create`、`/update`、`/delete`、`/get`
+5. 依赖注入使用 `@RequiredArgsConstructor` 注解（Lombok），并使用 final 字段
+6. **返回类型必须为 `NexaResponse<T>`**
+7. Controller 只能调用 Application 层
+
+```java
+@RestController
+@RequestMapping("/todo")
+@RequiredArgsConstructor
+public class TodoController {
+
+    private final TodoApplication todoApplication;
+
+    @GetMapping("/{id}")
+    public NexaResponse<TodoVo> getById(@PathVariable String id) {
+        return NexaResponse.success(todoApplication.getById(id));
+    }
+
+    @PostMapping
+    public NexaResponse<TodoVo> create(@Valid @RequestBody TodoCreateParam param) {
+        return NexaResponse.success(todoApplication.create(param));
+    }
+}
+```
+
+## Application 规范
+
+1. Application 类必须为接口 + Impl 实现模式
+2. Impl 类使用 `@Service` 注解
+3. **只负责业务流程编排，禁止包含具体业务逻辑实现**
+4. 事务控制在此层添加 `@Transactional`
+5. 只能调用 Service 层，禁止直接操作 Integration/Entity
+
+```java
+public interface TodoApplication {
+    TodoVo create(TodoCreateParam param);
+}
+
+@Service
+@RequiredArgsConstructor
+public class TodoApplicationImpl implements TodoApplication {
+
+    private final TodoService todoService;
+
+    @Override
+    @Transactional
+    public TodoVo create(TodoCreateParam param) {
+        return todoService.create(param);
+    }
+}
+```
+
+## Service 规范
+
+1. Service 类必须为接口 + Impl 实现模式
+2. Impl 类使用 `@Service` 注解
+3. **只负责具体业务操作实现，不处理事务编排和流程控制**
+4. 返回对象应为 DTO/VO，而非 Entity 类（除非绝对必要）
+5. 记录存在性检查使用 Repository 方法配合 `.orElseThrow()`
+6. 可直接操作 Integration 和 Entity 层
+
+```java
+public interface TodoService {
+    TodoVo create(TodoCreateParam param);
+    TodoVo getById(String id);
+}
+
+@Service
+@RequiredArgsConstructor
+public class TodoServiceImpl implements TodoService {
+
+    private final TodoRepo todoRepo;
+
+    @Override
+    public TodoVo getById(String id) {
+        Todo todo = todoRepo.findById(id)
+            .orElseThrow(() -> new NexaException(ErrorType.COMMON_NOT_FOUND));
+        return TodoConverter.INSTANCE.toVo(todo);
+    }
+}
+```
+
+## Entity 规范
+
+1. 必须使用 `@Entity` 注解
+2. **必须继承 `BaseEntity`**（已包含 id、审计字段、软删除）
+3. 使用 `@Getter` `@Setter`（而非 `@Data`，避免影响 equals/hashCode）
+4. 属性校验使用 `@Size`、`@NotEmpty`、`@Email` 等注解
+
+```java
+@Entity
+@Table(name = "todo")
+@Getter
+@Setter
+public class Todo extends BaseEntity {
+
+    @Column(nullable = false, length = 200)
+    @NotBlank
+    @Size(max = 200)
+    private String title;
+
+    @Column(length = 1000)
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private TodoStatusEnum status;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User assignee;
+}
+```
+
+## Repository 规范
+
+1. 必须为 interface 类型，继承 `BaseRepo<Entity, String>`
+2. **优先使用方法名派生查询**，复杂查询使用 `@Query`（JPQL）
+3. 单条查询返回 `Optional<T>`，禁止返回 `null`
+4. 分页查询使用 `Pageable` 参数，返回 `Page<T>`
+5. 预加载关联实体时使用 `@EntityGraph` 避免 N+1 问题
+6. 多表联查使用 DTO 投影作为数据容器
+7. 批量更新/删除必须使用 `@Modifying` + `@Query`
+
+```java
+@Repository
+public interface TodoRepo extends BaseRepo<Todo, String> {
+    
+    Optional<Todo> findByTitle(String title);
+
+    @EntityGraph(attributePaths = {"assignee"})
+    Optional<Todo> findWithAssigneeById(String id);
+
+    @Query("SELECT t FROM Todo t WHERE t.status = :status")
+    List<Todo> findByStatus(@Param("status") TodoStatusEnum status);
+}
+```
+
+## Integration（外部系统集成）规范
+
+1. 使用 `@Component` 或 `@Service` 注解
+2. **禁止包含业务逻辑**，只做外部系统调用的简单封装
+3. 命名为 `{System}Client.java`
+4. 请求/响应对象放在 `integration/request/` 和 `integration/response/` 目录
+
+```java
+@Component
+public class DingTalkClient {
+
+    public DingTalkResponse sendMessage(DingTalkRequest request) {
+        // 调用钉钉 API，不包含业务逻辑
+    }
+}
+```
+
+## DTO/VO/Param/Command 规范
+
+1. **DTO**：数据传输对象，用于层间数据传递
+2. **VO**：视图对象，用于 Controller 返回
+3. **Param**：Controller 层接收参数对象，命名为 `{Xxx}Param.java`
+4. **Command**：Service 层参数对象（入参较多时），命名为 `{Xxx}Command.java`
+5. 优先使用 `@Data` class 类型，并视情况添加 `@Builder`,`@Accessors(chain=true)`（除非特别指定使用record）
+
+## 参数校验规范
+
+1. **Param 类中的校验注解必须提供业务语义的 `message`**，禁止使用框架默认提示（如 `不能为空`、`必须大于或等于0.0`）
+2. message 应让用户理解业务含义，而非技术字段名，例如：
+   - `@NotEmpty(message = "提交内容不能为空，请填写所有明细行的修正工时")`
+   - `@DecimalMin(value = "0.0", message = "修正工时不能为负数")`
+   - `@Size(max = 500, message = "修改备注不能超过500字")`
+3. 全局异常处理器只返回 message 内容，不拼接字段路径，因此 message 必须独立可读
+
+## 统一响应格式
+
+使用 `NexaResponse<T>` 封装所有响应（已存在于 `core/dto/NexaResponse.java`）：
+
+```java
+// 成功响应
+return NexaResponse.success(data);
+
+// 无数据成功响应
+return NexaResponse.success();
+
+// 错误响应（通过全局异常处理）
+throw new NexaException(ErrorType.COMMON_NOT_FOUND);
+```
+
+## 全局异常处理
+
+异常统一由 `CommonExceptionHandler` 处理（已存在于 `core/handler/`）：
+
+```java
+// 抛出业务异常
+throw new NexaException(ErrorType.COMMON_INVALID_ARGUMENT, "参数错误描述");
+
+// 带原始异常
+throw new NexaException(ErrorType.COMMON_INTERNAL_SERVER_ERROR, cause);
+```
+
+## Spring Security 约定（Boot 4 / Security 7）
+
+1. 方法级权限控制使用 `@EnableMethodSecurity` 与 `@PreAuthorize`
+
+## 目录结构模板
+
+```
+[module]/
+├── controller/                 # REST API 控制器
+├── scheduler/                  # 定时任务
+├── application/                # 应用编排层
+│   └── impl/                   # Application 实现
+├── service/                    # 业务逻辑层
+│   └── impl/                   # Service 实现
+├── dto/                        # 数据传输对象
+├── vo/                         # 视图对象
+├── param/                      # Controller 参数对象
+├── command/                    # Service 参数对象
+├── converter/                  # MapStruct 转换器
+├── enums/                      # 枚举定义
+├── integration/                # 外部系统集成
+│   ├── {System}Client.java     # 外部系统客户端
+│   ├── request/                # 请求对象
+│   └── response/               # 响应对象
+└── entity/                     # 数据实体
+    └── repo/                   # 数据仓储
+```
+
+## 代码规范
+
+1. **格式化**：使用 Google Java Format 插件，选择 AOSP 风格
+2. **其他规范**：参照阿里巴巴 Java 开发手册
+3. **注释**：好的代码是自解释的，只在解释复杂算法或"为什么这样做"时才使用注释
+4. **命名**：通过清晰的命名消除注释的必要性
+5. **代码安全性**：仅在明确需要的情况下添加异常处理或兜底策略，避免不必要的冗余防护。
+6. **author 注释**：主要由 AI 编写的代码，请在类头注释中添加 `@auth AI Assistant`。

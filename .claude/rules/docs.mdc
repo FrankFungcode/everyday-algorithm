@@ -1,0 +1,78 @@
+---
+description: 项目文档体系总览。说明两棵文档树（docs/ 稳定知识 + _bmad-output/ 过程产物）、单一入口、AGENTS.md 不变量。详细同步动作见 doc-sync-on-change。
+alwaysApply: true
+---
+
+# 文档体系总览
+
+> **同步动作请见 [`doc-sync-on-change.mdc`](mdc:.cursor/rules/doc-sync-on-change.mdc)**；本文件只描述"文档树长什么样"。
+
+## 两棵文档树 + 单一入口
+
+| 树 | 入口 | 内容 | 是否进 git |
+|----|------|------|-----------|
+| 稳定知识 | [`docs/AGENTS.md`](mdc:docs/AGENTS.md) | 架构规范、ADR、模块设计与对外契约 | 是 |
+| 过程产物 | [`_bmad-output/AGENTS.md`](mdc:_bmad-output/AGENTS.md) | PRD / Architecture / Epic / Sprint / Story | 是（实施产出留档） |
+
+仓库统一入口：[`AGENTS.md`](mdc:AGENTS.md)（Cursor、Claude Code、其他 Agent 共用）。
+
+## docs/ 结构
+
+```
+docs/
+├── AGENTS.md
+├── getting-started.md
+├── architecture/
+│   ├── AGENTS.md
+│   ├── overview.md
+│   └── architecture.md
+├── decisions/
+│   ├── AGENTS.md
+│   └── NNNN-{slug}.md          # 每条 ADR 一个文件
+└── modules/
+    ├── AGENTS.md
+    ├── _template/              # 新模块骨架
+    └── {module}/
+        ├── AGENTS.md           # 模块索引（≤50 行）
+        ├── design.md           # 流程/数据模型/业务规则/设计理由
+        └── interfaces.md       # API/DTO/暴露的 Bean/外部契约
+```
+
+代码级 `AGENTS.md` 仍在源码包内（如 `src/main/java/shokz/nexa/apps/{module}/AGENTS.md`），描述"代码怎么工作"，与 `docs/modules/{module}/` 互补。
+
+## _bmad-output/ 结构
+
+```
+_bmad-output/
+├── AGENTS.md
+├── bmad-guide.md               # 工作流手册
+├── planning-artifacts/
+│   ├── product/research/       # 跨模块研究
+│   └── {module}/               # PRD / Architecture / Epics / UX
+└── implementation-artifacts/
+    └── {module}/               # Sprint / Story / 评审
+```
+
+## AGENTS.md 不变量
+
+- 只做索引：≤ 50 行；不写长内容、不贴代码
+- **父 → 子单向引用**；同级 AGENTS 间不互链（要跳走共同父级）
+- 跨树只引对方根 `AGENTS.md`，不深钩
+- 整体是一棵树，无环
+
+## 文档拆分指引
+
+当某文件过大、内容涉及多个独立子领域时再拆分：
+
+- `design.md` → `design/` 目录（如 `design/data-model.md`、`design/api.md`）
+- `interfaces.md` → `interfaces/` 目录（按子域划分）
+- 模块下出现拆分后，以模块的 `AGENTS.md` 作为子导航
+
+判断时机交由 Agent 根据可读性自行决定，不设硬性行数阈值。
+
+## 边界
+
+- ❌ 不在 `docs/` 写 PRD/Epic/Story/Sprint
+- ❌ 不在 `_bmad-output/` 写架构约定/ADR
+- ❌ `AGENTS.md` 超过 100 行
+- ❌ 历史过程产物里的路径快照不修改（如旧 Story 文档里的旧路径）

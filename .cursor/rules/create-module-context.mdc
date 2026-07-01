@@ -1,0 +1,37 @@
+---
+description: 新建业务模块时，从 docs/modules/_template/ 复制三件套（AGENTS/design/interfaces）并接入索引。触发关键词：新增模块、create module、new module、新建业务模块。
+alwaysApply: false
+---
+
+# 新模块文档骨架复制
+
+当用户请求**新增业务模块**（关键词：新增模块、新建模块、create module、new module）时，触发以下流程：
+
+## 步骤
+
+1. **确认模块标识**：询问或确认模块名（kebab-case）和包路径，例如 `report` / `shokz.nexa.apps.report`
+2. **复制骨架**：
+   ```
+   cp -r docs/modules/_template/ docs/modules/{module-name}/
+   ```
+   （Windows / PowerShell：`Copy-Item docs/modules/_template -Destination docs/modules/{module-name} -Recurse`）
+3. **替换占位**：在新建的 `AGENTS.md` / `design.md` / `interfaces.md` 中：
+   - `{模块名}` → 实际模块名（如 `report`）
+   - `{module-package}` → `shokz.nexa.apps.{module-name}`
+4. **接入索引**：在 [`docs/modules/AGENTS.md`](mdc:docs/modules/AGENTS.md) 的"模块清单"章节追加：
+   ```markdown
+   - [`{module-name}/`](module-name/AGENTS.md) — 一句话定位
+   ```
+5. **填充模块定位**：在新模块的 `AGENTS.md` 顶部用一句话写清楚"解决什么业务问题、对外提供什么能力"
+6. **可选：BMad 模块路由登记**：若该模块走完整 BMad 流程，在 [`_bmad-output/bmad-guide.md`](mdc:_bmad-output/bmad-guide.md) §4.2 已注册模块表追加一行
+7. **可选：新增 Java 包后**，在主包目录创建源码 `AGENTS.md`（结构见现有 [`core/AGENTS.md`](mdc:src/main/java/shokz/nexa/apps/core/AGENTS.md)）
+
+## 不变量
+
+- 新模块的 `AGENTS.md` 必须 ≤ 50 行，仅作索引
+- 新模块**禁止**在 `docs/modules/{module}/` 下新增 `requirements.md` / `decisions/` 子目录（与现行结构不一致）
+- 模块特有的实现决策合入 `design.md` 的"设计理由"章节；只有**全局**决策才进 `docs/decisions/NNNN-*.md`
+
+## 同步
+
+完成后立即触发 [`doc-sync-on-change.mdc`](mdc:.cursor/rules/doc-sync-on-change.mdc) 的自检并汇报。
