@@ -1,0 +1,21 @@
+package {{ base_package }}.param;
+
+{{ imports_block }}
+
+@Data
+public class {{ name }}{{ 'Update' if partial else 'Create' }}Param {
+{% for f in fields %}
+
+{% if not partial and f.required %}
+{% if f.javaType == 'String' %}
+    @NotBlank(message = "{{ f.message }}")
+{% else %}
+    @NotNull(message = "{{ f.message }}")
+{% endif %}
+{% endif %}
+{% if f.length and f.javaType == 'String' %}
+    @Size(max = {{ f.length }}, message = "{{ f.label }}不能超过 {{ f.length }} 个字符")
+{% endif %}
+    private {{ f.javaType }} {{ f.name }};
+{% endfor %}
+}

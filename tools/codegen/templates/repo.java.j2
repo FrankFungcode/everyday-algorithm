@@ -1,0 +1,11 @@
+package {{ base_package }}.entity.repo;
+
+{{ imports_block }}
+
+@Repository
+public interface {{ entity }}Repo extends BaseRepo<{{ entity }}> {
+{% for f in unique_fields %}
+
+    Optional<{{ entity }}> findBy{{ f.capName }}({{ f.javaType }} {{ f.name }});
+{% endfor %}
+}

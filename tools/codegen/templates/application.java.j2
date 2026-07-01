@@ -1,0 +1,31 @@
+package {{ base_package }}.application;
+
+{{ imports_block }}
+
+/**
+ * {{ description }}应用编排。
+ *
+ * @auth AI Assistant
+ */
+public interface {{ name }}Application {
+{% if 'create' in operations %}
+
+    {{ name }}IdVo create({{ name }}CreateParam param);
+{% endif %}
+{% if 'update' in operations %}
+
+    void update(UUID id, {{ name }}UpdateParam param);
+{% endif %}
+{% if 'getById' in operations %}
+
+    {{ name }}Vo getById(UUID id);
+{% endif %}
+{% if 'page' in operations %}
+
+    PagedDataDTO<{{ name }}Vo> page({% if keyword_fields %}String keyword, {% endif %}{% for f in filter_fields %}{{ f.javaType }} {{ f.name }}, {% endfor %}Pageable pageable);
+{% endif %}
+{% if 'delete' in operations %}
+
+    {{ name }}BatchDeleteResultVo deleteByIds({{ name }}BatchDeleteParam param);
+{% endif %}
+}

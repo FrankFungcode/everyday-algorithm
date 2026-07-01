@@ -1,0 +1,25 @@
+package {{ base_package }}.entity;
+
+{{ imports_block }}
+
+/**
+ * {{ description }}。
+ *
+ * @auth AI Assistant
+ */
+@Entity
+@Table(name = "{{ table }}")
+@Getter
+@Setter
+public class {{ entity }} extends BaseEntity {
+{% for f in fields %}
+
+{% if f.isEnum %}
+    @Enumerated(EnumType.STRING)
+    @Column({% if f.required %}nullable = false, {% endif %}length = {{ f.length or 20 }}{% if f.unique %}, unique = true{% endif %})
+{% else %}
+    @Column({% if f.required %}nullable = false{% if f.length %}, {% endif %}{% endif %}{% if f.length %}length = {{ f.length }}{% endif %}{% if f.unique %}, unique = true{% endif %})
+{% endif %}
+    private {{ f.javaType }} {{ f.name }};
+{% endfor %}
+}

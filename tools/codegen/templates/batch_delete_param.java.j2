@@ -1,0 +1,13 @@
+package {{ base_package }}.param;
+
+import jakarta.validation.constraints.NotEmpty;
+import java.util.List;
+import java.util.UUID;
+import lombok.Data;
+
+@Data
+public class {{ name }}BatchDeleteParam {
+
+    @NotEmpty(message = "请选择要删除的{{ description }}")
+    private List<UUID> ids;
+}

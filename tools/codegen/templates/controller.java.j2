@@ -1,0 +1,78 @@
+package {{ base_package }}.controller;
+
+{{ imports_block }}
+
+/**
+ * {{ description }}。
+ *
+ * @auth AI Assistant
+ */
+@RestController
+@RequestMapping("{{ base_path }}")
+@RequiredArgsConstructor
+public class {{ name }}Controller {
+
+    private final {{ name }}Application {{ app_var }};
+{% if 'page' in operations %}
+
+{% if pre_authorize_line %}
+    {{ pre_authorize_line }}
+{% endif %}
+    @GetMapping
+    public NexaResponse<PagedDataDTO<{{ name }}Vo>> page(
+{% if keyword_fields %}
+            @RequestParam(required = false) String keyword,
+{% endif %}
+{% for f in filter_fields %}
+            @RequestParam(required = false) {{ f.javaType }} {{ f.name }},
+{% endfor %}
+            @PageableDefault(size = 20, sort = "updatedAt", direction = Sort.Direction.DESC)
+                    Pageable pageable) {
+        return NexaResponse.success(
+                {{ app_var }}.page({% if keyword_fields %}keyword, {% endif %}{% for f in filter_fields %}{{ f.name }}, {% endfor %}pageable));
+    }
+{% endif %}
+{% if 'getById' in operations %}
+
+{% if pre_authorize_line %}
+    {{ pre_authorize_line }}
+{% endif %}
+    @GetMapping("/{id}")
+    public NexaResponse<{{ name }}Vo> getById(@PathVariable UUID id) {
+        return NexaResponse.success({{ app_var }}.getById(id));
+    }
+{% endif %}
+{% if 'create' in operations %}
+
+{% if pre_authorize_line %}
+    {{ pre_authorize_line }}
+{% endif %}
+    @PostMapping
+    public NexaResponse<{{ name }}IdVo> create(@Valid @RequestBody {{ name }}CreateParam param) {
+        return NexaResponse.success({{ app_var }}.create(param));
+    }
+{% endif %}
+{% if 'update' in operations %}
+
+{% if pre_authorize_line %}
+    {{ pre_authorize_line }}
+{% endif %}
+    @PutMapping("/{id}")
+    public NexaResponse<Void> update(
+            @PathVariable UUID id, @Valid @RequestBody {{ name }}UpdateParam param) {
+        {{ app_var }}.update(id, param);
+        return NexaResponse.success();
+    }
+{% endif %}
+{% if 'delete' in operations %}
+
+{% if pre_authorize_line %}
+    {{ pre_authorize_line }}
+{% endif %}
+    @PostMapping("/batch-delete")
+    public NexaResponse<{{ name }}BatchDeleteResultVo> batchDelete(
+            @Valid @RequestBody {{ name }}BatchDeleteParam param) {
+        return NexaResponse.success({{ app_var }}.deleteByIds(param));
+    }
+{% endif %}
+}

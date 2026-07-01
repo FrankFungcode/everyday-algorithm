@@ -1,0 +1,15 @@
+package {{ base_package }}.vo;
+
+{{ imports_block }}
+
+@Data
+public class {{ name }}Vo {{ 'extends BaseDto ' if vo_extends_base_dto else '' }}{
+{% if not vo_extends_base_dto %}
+
+    private UUID id;
+{% endif %}
+{% for f in fields %}
+
+    private {{ f.javaType }} {{ f.name }};
+{% endfor %}
+}

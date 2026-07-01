@@ -1,0 +1,59 @@
+package {{ base_package }}.application.impl;
+
+{{ imports_block }}
+
+/**
+ * {{ description }} Application：仅编排事务，业务规则在 {{ name }}Service。
+ *
+ * @auth AI Assistant
+ */
+@Service
+@RequiredArgsConstructor
+public class {{ name }}ApplicationImpl implements {{ name }}Application {
+
+    private final {{ name }}Service {{ service_var }};
+{% if 'create' in operations %}
+
+    @Override
+    @Transactional
+    public {{ name }}IdVo create({{ name }}CreateParam param) {
+        return {{ service_var }}.create(param);
+    }
+{% endif %}
+{% if 'update' in operations %}
+
+    @Override
+    @Transactional
+    public void update(UUID id, {{ name }}UpdateParam param) {
+        {{ service_var }}.update(id, param);
+    }
+{% endif %}
+{% if 'getById' in operations %}
+
+    @Override
+    @Transactional(readOnly = true)
+    public {{ name }}Vo getById(UUID id) {
+        return {{ service_var }}.getById(id);
+    }
+{% endif %}
+{% if 'page' in operations %}
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagedDataDTO<{{ name }}Vo> page({% if keyword_fields %}String keyword, {% endif %}{% for f in filter_fields %}{{ f.javaType }} {{ f.name }}, {% endfor %}Pageable pageable) {
+        Page<{{ name }}Vo> page = {{ service_var }}.page({% if keyword_fields %}keyword, {% endif %}{% for f in filter_fields %}{{ f.name }}, {% endfor %}pageable);
+        return PagedDataDTO.of(page.hasNext(), page.getTotalElements(), page.getContent());
+    }
+{% endif %}
+{% if 'delete' in operations %}
+
+    @Override
+    @Transactional
+    public {{ name }}BatchDeleteResultVo deleteByIds({{ name }}BatchDeleteParam param) {
+        int deleted = {{ service_var }}.deleteByIds(param != null ? param.getIds() : null);
+        {{ name }}BatchDeleteResultVo vo = new {{ name }}BatchDeleteResultVo();
+        vo.setDeleted(deleted);
+        return vo;
+    }
+{% endif %}
+}

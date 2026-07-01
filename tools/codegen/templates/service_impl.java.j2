@@ -1,0 +1,139 @@
+package {{ base_package }}.service.impl;
+
+{{ imports_block }}
+
+/**
+ * {{ description }}维护实现。
+ *
+ * @auth AI Assistant
+ */
+@Service
+@RequiredArgsConstructor
+public class {{ name }}ServiceImpl implements {{ name }}Service {
+
+    private final {{ entity }}Repo {{ repo_var }};
+{% if 'create' in operations %}
+
+    @Override
+    @Transactional
+    public {{ name }}IdVo create({{ name }}CreateParam param) {
+{% for f in unique_fields %}
+        assert{{ f.capName }}Available(param.get{{ f.capName }}(), null);
+{% endfor %}
+        {{ entity }} entity = new {{ entity }}();
+{% for f in fields %}
+        entity.set{{ f.capName }}(param.get{{ f.capName }}());
+{% endfor %}
+        {{ repo_var }}.save(entity);
+        {{ name }}IdVo vo = new {{ name }}IdVo();
+        vo.setId(entity.getId());
+        return vo;
+    }
+{% endif %}
+{% if 'update' in operations %}
+
+    @Override
+    @Transactional
+    public void update(UUID id, {{ name }}UpdateParam param) {
+        {{ entity }} entity = {{ repo_var }}.findByIdOrThrow(id);
+{% for f in unique_fields %}
+        if (param.get{{ f.capName }}() != null) {
+            assert{{ f.capName }}Available(param.get{{ f.capName }}(), id);
+        }
+{% endfor %}
+{% for f in fields %}
+        if (param.get{{ f.capName }}() != null) {
+            entity.set{{ f.capName }}(param.get{{ f.capName }}());
+        }
+{% endfor %}
+        {{ repo_var }}.save(entity);
+    }
+{% endif %}
+{% if 'getById' in operations %}
+
+    @Override
+    @Transactional(readOnly = true)
+    public {{ name }}Vo getById(UUID id) {
+        return toVo({{ repo_var }}.findByIdOrThrow(id));
+    }
+{% endif %}
+{% if 'page' in operations %}
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<{{ name }}Vo> page({% if keyword_fields %}String keyword, {% endif %}{% for f in filter_fields %}{{ f.javaType }} {{ f.name }}, {% endfor %}Pageable pageable) {
+        Specification<{{ entity }}> spec = buildSpec({% if keyword_fields %}keyword{% endif %}{% for f in filter_fields %}{{ ", " if keyword_fields or not loop.first else "" }}{{ f.name }}{% endfor %});
+        Page<{{ entity }}> entityPage = {{ repo_var }}.findAll(spec, pageable);
+        return entityPage.map({{ name }}ServiceImpl::toVo);
+    }
+
+    private static Specification<{{ entity }}> buildSpec({% if keyword_fields %}String keyword{% endif %}{% for f in filter_fields %}{{ ", " if keyword_fields or not loop.first else "" }}{{ f.javaType }} {{ f.name }}{% endfor %}) {
+        return (root, q, cb) -> {
+            List<Predicate> ps = new ArrayList<>();
+{% if keyword_fields %}
+            if (keyword != null && !keyword.isBlank()) {
+                String like = "%" + keyword.trim() + "%";
+{% if keyword_fields|length > 1 %}
+                ps.add(
+                        cb.or(
+{% for f in keyword_fields %}
+                                cb.like(root.get("{{ f.name }}"), like){{ "," if not loop.last else "" }}
+{% endfor %}
+                                ));
+{% else %}
+                ps.add(cb.like(root.get("{{ keyword_fields[0].name }}"), like));
+{% endif %}
+            }
+{% endif %}
+{% for f in filter_fields %}
+            if ({{ f.name }} != null) {
+                ps.add(cb.equal(root.get("{{ f.name }}"), {{ f.name }}));
+            }
+{% endfor %}
+            return ps.isEmpty() ? cb.conjunction() : cb.and(ps.toArray(Predicate[]::new));
+        };
+    }
+{% endif %}
+{% if 'delete' in operations %}
+
+    @Override
+    @Transactional
+    public int deleteByIds(List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new NexaException(ErrorType.COMMON_INVALID_ARGUMENT, "请选择要删除的{{ description }}");
+        }
+        Set<UUID> unique = new LinkedHashSet<>(ids);
+        for (UUID id : unique) {
+            {{ repo_var }}.findByIdOrThrow(id);
+        }
+        {{ repo_var }}.deleteAllById(unique);
+        return unique.size();
+    }
+{% endif %}
+{% for f in unique_fields %}
+
+    private void assert{{ f.capName }}Available({{ f.javaType }} value, UUID exceptId) {
+        Optional<{{ entity }}> holder = {{ repo_var }}.findBy{{ f.capName }}(value);
+        if (holder.isEmpty()) {
+            return;
+        }
+        if (exceptId != null && holder.get().getId().equals(exceptId)) {
+            return;
+        }
+        throw new NexaException(ErrorType.COMMON_INVALID_ARGUMENT, "「" + value + "」已存在");
+    }
+{% endfor %}
+
+    private static {{ name }}Vo toVo({{ entity }} entity) {
+        {{ name }}Vo vo = new {{ name }}Vo();
+        vo.setId(entity.getId());
+{% if vo_extends_base_dto %}
+        vo.setCreatedAt(entity.getCreatedAt());
+        vo.setUpdatedAt(entity.getUpdatedAt());
+{% endif %}
+{% for f in fields %}
+        vo.set{{ f.capName }}(entity.get{{ f.capName }}());
+{% endfor %}
+        return vo;
+    }
+}

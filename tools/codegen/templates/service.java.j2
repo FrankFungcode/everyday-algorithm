@@ -1,0 +1,32 @@
+package {{ base_package }}.service;
+
+{{ imports_block }}
+
+/**
+ * {{ description }}维护。
+ *
+ * @auth AI Assistant
+ */
+public interface {{ name }}Service {
+{% if 'create' in operations %}
+
+    {{ name }}IdVo create({{ name }}CreateParam param);
+{% endif %}
+{% if 'update' in operations %}
+
+    void update(UUID id, {{ name }}UpdateParam param);
+{% endif %}
+{% if 'getById' in operations %}
+
+    {{ name }}Vo getById(UUID id);
+{% endif %}
+{% if 'page' in operations %}
+
+    Page<{{ name }}Vo> page({% if keyword_fields %}String keyword, {% endif %}{% for f in filter_fields %}{{ f.javaType }} {{ f.name }}, {% endfor %}Pageable pageable);
+{% endif %}
+{% if 'delete' in operations %}
+
+    /** 批量软删除，返回实际删除数量。 */
+    int deleteByIds(List<UUID> ids);
+{% endif %}
+}

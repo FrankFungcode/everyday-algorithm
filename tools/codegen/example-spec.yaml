@@ -1,0 +1,52 @@
+# CRUD 代码生成器 — 示例 spec
+#
+# 用法：
+#   pip install -r tools/codegen/requirements.txt
+#   python tools/codegen/generate.py --spec tools/codegen/example-spec.yaml
+#
+# 字段类型支持：String / Integer / Long / BigDecimal / Boolean /
+#              LocalDate / LocalDateTime / YearMonth / UUID / enum
+
+module: timesheet          # 目标业务模块（对应 shokz.nexa.apps.{module} 包）
+name: DemoWidget            # 业务前缀，决定 Service/Application/Controller/Param/Vo 类名
+entity: TsDemoWidget         # JPA Entity 类名
+table: ts_demo_widgets       # 表名
+description: "示例组件主数据"
+basePath: /timesheet/demo-widgets
+
+# @PreAuthorize 守卫；两者都留空则不生成权限注解
+roles: []
+authBean: null
+
+voExtendsBaseDto: false      # true 则 Vo 继承 BaseDto（复用 id/createdAt/updatedAt）
+
+operations: [create, update, getById, page, delete]
+
+fields:
+  - name: code
+    type: String
+    length: 50
+    required: true
+    message: "编码不能为空"
+    unique: true
+    keywordSearch: true
+
+  - name: widgetName
+    type: String
+    length: 100
+    required: true
+    message: "名称不能为空"
+    keywordSearch: true
+
+  - name: status
+    type: enum
+    enumType: DemoWidgetStatus
+    required: true
+    message: "状态不能为空"
+    filterable: true
+
+  - name: remark
+    type: String
+    length: 500
+    required: false
+    label: "备注"
