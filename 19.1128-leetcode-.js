@@ -24,7 +24,7 @@ function dfsMemoization(graph, start) {
   }
   dfs(start);
 }
-// 时间负责度: O(V + E)  V表示节点数，E表示边数
+// 时间复杂度: O(V + E)  V表示节点数，E表示边数
 // 空间复杂度：O(V)      递归栈和访问集合的空间
 
 // 广度优先遍历
